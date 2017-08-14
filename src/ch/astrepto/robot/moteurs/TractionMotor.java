@@ -1,13 +1,13 @@
 package ch.astrepto.robot.moteurs;
 
-import ch.astrepto.robot.Piste;
-import ch.astrepto.robot.capteurs.CapteurCouleur;
-import ch.astrepto.robot.capteurs.CapteurUltrason;
+import ch.astrepto.robot.Track;
+import ch.astrepto.robot.capteurs.ColorSensor;
+import ch.astrepto.robot.capteurs.UltrasonicSensor;
 import lejos.hardware.lcd.LCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 
-public class MoteurTraction {
+public class TractionMotor {
 
 	private EV3LargeRegulatedMotor motorLeft, rightMotor;
 	private EV3LargeRegulatedMotor[] synchro;
@@ -23,7 +23,7 @@ public class MoteurTraction {
 	private final static float speedAtSecondLimit = 3f/4f;
 	private static float currentSpeed;
 
-	public MoteurTraction() {
+	public TractionMotor() {
 		motorLeft = new EV3LargeRegulatedMotor(MotorPort.B);
 		rightMotor = new EV3LargeRegulatedMotor(MotorPort.C);
 
@@ -49,28 +49,28 @@ public class MoteurTraction {
 		float speedRightMotor = 0;
 		// on determine la nouvelle valeur de degré à tourner au robot
 		// en fonction de l'endroit sur la piste et du nombre de degré que tourne le robot
-		if (Piste.trackSide == 1 && Piste.trackPart == 1) {
+		if (Track.trackSide == 1 && Track.trackPart == 1) {
 			speedRightMotor = vitesseActuelle;
 			// la vitesse en fonction du rayon du centre de la piste
-			speedLeftMotor = (Piste.largeRadius - wheelSpacing) * vitesseActuelle / Piste.largeRadius;
+			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			// puis en fonction du degré de rotation
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ MoteurDirection.maxAngle * MoteurDirection.getCurrentAngle());
-		} else if (Piste.trackSide == -1 && Piste.trackPart == -1) {
-			speedLeftMotor = Piste.smallRadius * vitesseActuelle / (Piste.smallRadius + wheelSpacing);
+					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
+		} else if (Track.trackSide == -1 && Track.trackPart == -1) {
+			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ MoteurDirection.maxAngle * MoteurDirection.getCurrentAngle());
+					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
 			speedRightMotor = vitesseActuelle;
-		} else if (Piste.trackSide == 1 && Piste.trackPart == -1) {
-			speedLeftMotor = (Piste.largeRadius - wheelSpacing) * vitesseActuelle / Piste.largeRadius;
+		} else if (Track.trackSide == 1 && Track.trackPart == -1) {
+			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ MoteurDirection.maxAngle * MoteurDirection.getCurrentAngle());
+					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
 			speedRightMotor = vitesseActuelle;
-		} else if (Piste.trackSide == -1 && Piste.trackPart == 1) {
+		} else if (Track.trackSide == -1 && Track.trackPart == 1) {
 			speedRightMotor = vitesseActuelle;
-			speedLeftMotor = Piste.smallRadius * vitesseActuelle / (Piste.smallRadius + wheelSpacing);
+			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ MoteurDirection.maxAngle * MoteurDirection.getCurrentAngle());
+					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
 
 		}
 
@@ -92,7 +92,7 @@ public class MoteurTraction {
 		}
 	}
 
-	public void determineSpeed(float distance) {
+	public float determineSpeed(float distance) {
 		float speed;
 
 		if (distance > firstLimit) {
@@ -105,8 +105,8 @@ public class MoteurTraction {
 		} else {
 			speed = 0;
 		}
-
-		setSpeed(speed);
+		
+		return speed;
 	}
 
 	/**
@@ -126,8 +126,8 @@ public class MoteurTraction {
 		}
 
 		motorLeft.endSynchronization();
-	}
-
+	}	
+	
 	public void resetTacho() {
 		motorLeft.resetTachoCount();
 		rightMotor.resetTachoCount();

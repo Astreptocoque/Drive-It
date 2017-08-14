@@ -1,7 +1,7 @@
 package ch.astrepto.robot.moteurs;
 
-import ch.astrepto.robot.Piste;
-import ch.astrepto.robot.capteurs.CapteurCouleur;
+import ch.astrepto.robot.Track;
+import ch.astrepto.robot.capteurs.ColorSensor;
 import lejos.hardware.motor.EV3MediumRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 import lejos.hardware.port.SensorPort;
@@ -9,7 +9,7 @@ import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 
-public class MoteurDirection {
+public class DirectionMotor {
 
 	private EV3MediumRegulatedMotor directionMotor;
 
@@ -20,7 +20,7 @@ public class MoteurDirection {
 	public final static int maxAngle = 132; // de droit à un bord
 	private static int currentAngleDestination;
 
-	public MoteurDirection() {
+	public DirectionMotor() {
 		directionMotor = new EV3MediumRegulatedMotor(MotorPort.A);
 		directionTouchSensor = new EV3TouchSensor(SensorPort.S4).getTouchMode();
 		sampleDirectionTouchSensor = new float[directionTouchSensor.sampleSize()];
@@ -98,23 +98,33 @@ public class MoteurDirection {
 	 */
 	public int determineAngle(float intensity) {
 		int angle = 0;
+		// valeur d'angle dans le sens opposé (a pour effet de déplacer le zéro des roues
+		// sur le dégradé
 		int negativeAngle = 40;
-		
+
 		// on determine la nouvelle valeur de degré à tourner au robot
-		if (Piste.trackSide == 1 && Piste.trackPart == 1) {
+		if (Track.trackSide == 1 && Track.trackPart == 1) {
+			angle = (int) ((((maxAngle + negativeAngle) - (maxAngle + negativeAngle)
+					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
+					* (intensity - ColorSensor.trackMinValue)) - negativeAngle) * -1);
+		} else if (Track.trackSide == -1 && Track.trackPart == -1) {
+			angle = (int) (((maxAngle + negativeAngle)
+					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
+					* (intensity - ColorSensor.trackMinValue)) - negativeAngle);
+		} else if (Track.trackSide == 1 && Track.trackPart == -1) {
+			angle = (int) ((((maxAngle + negativeAngle) - (maxAngle + negativeAngle)
+					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
+					* (intensity - ColorSensor.trackMinValue)) - negativeAngle));
+		} else if (Track.trackSide == -1 && Track.trackPart == 1) {
 			angle = (int) ((((maxAngle + negativeAngle)
-					- (maxAngle + negativeAngle) / (CapteurCouleur.trackMaxValue - CapteurCouleur.trackMinValue)
-							* (intensity - CapteurCouleur.trackMinValue)) - negativeAngle )* -1);
-		} else if (Piste.trackSide == -1 && Piste.trackPart == -1) {
-			angle = (int) (((maxAngle + negativeAngle) / (CapteurCouleur.trackMaxValue - CapteurCouleur.trackMinValue)
-					* (intensity - CapteurCouleur.trackMinValue)) - negativeAngle );
-		} else if (Piste.trackSide == 1 && Piste.trackPart == -1) {
-			angle = (int) ((((maxAngle + negativeAngle)
-					- (maxAngle + negativeAngle) / (CapteurCouleur.trackMaxValue - CapteurCouleur.trackMinValue)
-							* (intensity - CapteurCouleur.trackMinValue)) - negativeAngle ));
-		} else if (Piste.trackSide == -1 && Piste.trackPart == 1) {
-			angle = (int) ((((maxAngle + negativeAngle) / (CapteurCouleur.trackMaxValue - CapteurCouleur.trackMinValue)
-					* (intensity - CapteurCouleur.trackMinValue)) - negativeAngle )* -1);
+					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
+					* (intensity - ColorSensor.trackMinValue)) - negativeAngle) * -1);
+		}
+		// si on est juste après le croisement, l'angle est divisé par 2
+		// pour atténué la reprise de piste
+		if (Track.justAfterCrossing) {
+			angle /= 2;
+			Track.justAfterCrossing = false;
 		}
 
 		return angle;

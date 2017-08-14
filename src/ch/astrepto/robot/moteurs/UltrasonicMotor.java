@@ -6,7 +6,7 @@ import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.NXTTouchSensor;
 import lejos.robotics.SampleProvider;
 
-public class MoteurUltrason {
+public class UltrasonicMotor {
 
 	private NXTRegulatedMotor ultrasonicMotor;
 
@@ -18,7 +18,7 @@ public class MoteurUltrason {
 	private final static int maxDirectionAngle = 1190;
 	private static int currentAngle;
 
-	public MoteurUltrason() {
+	public UltrasonicMotor() {
 		ultrasonicMotor = new NXTRegulatedMotor(MotorPort.D);
 		ultrasonicTouchSensor = new NXTTouchSensor(SensorPort.S1).getTouchMode();
 		sampleUltrasonicTouchSensor = new float[ultrasonicTouchSensor.sampleSize()];
@@ -61,7 +61,7 @@ public class MoteurUltrason {
 		// si l'angle est lié au roue
 		if (boundWithWheels) {
 			// mise à l'échelle de l'angle Direction à l'angle Ultrason
-			angle = maxDirectionAngle / MoteurDirection.maxAngle * angleP;
+			angle = maxDirectionAngle / DirectionMotor.maxAngle * angleP;
 			// transformation de l'angle final en nombre de ° que doit faire le robot
 			
 		}

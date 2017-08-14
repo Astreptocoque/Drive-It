@@ -1,7 +1,6 @@
 package ch.astrepto.robot;
 
 import ch.astrepto.robot.moteurs.Robot;
-import lejos.hardware.Button;
 
 public class MainDriveIt {
 
@@ -11,9 +10,7 @@ public class MainDriveIt {
 		Robot robot = new Robot();
 
 		while (true) {
-			robot.updateDirection();
-			robot.updateSpeed();
-			robot.updateMove();
+			robot.run();
 
 		}
 

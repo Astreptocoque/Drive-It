@@ -7,13 +7,13 @@ import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.NXTUltrasonicSensor;
 import lejos.robotics.SampleProvider;
 
-public class CapteurUltrason {
+public class UltrasonicSensor {
 
 	private SampleProvider capteurUltrason;
 	private float[] sampleCapteurUltrason;
 
 	
-	public CapteurUltrason(){
+	public UltrasonicSensor(){
 		capteurUltrason = new NXTUltrasonicSensor(SensorPort.S2).getDistanceMode();
 		sampleCapteurUltrason = new float[capteurUltrason.sampleSize()];
 	}
