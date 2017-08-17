@@ -1,13 +1,25 @@
 package ch.astrepto.robot;
 
+import java.sql.Time;
+import java.util.Date;
+
+import javax.swing.Timer;
+
+import lejos.hardware.Sound;
+
 public class MainDriveIt {
 
 	public static void main(String[] args) {
 
 		// à faire avant de déposer le robot sur la piste
 		RobotControls rob = new RobotControls();
+		// annonce le début de la course
+		Sound.beep();
 
-		while (true) {
+		boolean boucle = true;
+		long time = (int) System.currentTimeMillis();
+
+		do{
 			// GESTION DU RELEVE LUMINEUX DE LA PISTE
 			// Est maj si pas "en train de passer le carrefour" et si pas
 			// "initialisation d'un
@@ -51,7 +63,22 @@ public class MainDriveIt {
 			if (Track.overtaking) {
 				rob.overtaking();
 			}
-		}
+			
+			/**
+			 * GESTION DE LA FIN DES DEPASSEMENTS
+			 * Est maj si pas "accroché à la piste"
+			 */
+			if(!Track.hangOnTrack){
+				rob.overtakingEnd(Track.overtaking);
+			}
+			
+			// GESTION DE L'ARRET DE LA COURSE
+			// le robot s'arrête après 2 min 30 (et quelques secondes)
+			time = System.currentTimeMillis() - time;
+			if(time >= 153 * 1000)
+				boucle = false;
+			
+		}while(boucle);
 
 	}
 }

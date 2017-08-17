@@ -19,7 +19,7 @@ public class TractionMotor {
 	private final static float firstLimit = 30f; // passé cette limite, le robot est à plein
 							// régime
 	private final static float speedAtSecondLimit = 3f / 4f; // % de vitesse à la 2ème limite
-	private static float currentSpeed;
+	public static float currentSpeed;
 
 	public TractionMotor() {
 		motorLeft = new EV3LargeRegulatedMotor(MotorPort.B);
@@ -37,7 +37,9 @@ public class TractionMotor {
 	}
 
 	/**
-	 * Règle la vitesse et l'ajuste pour chaque roue de traction en fonction du virage
+	 * Règle la vitesse et l'ajuste pour chaque roue de traction en fonction du virage Chaque
+	 * partie de la piste a ses réglages. Si le robot va tout droit, quelques soit les réglages,
+	 * la vitesse de chaque moteur sera égale
 	 * 
 	 * @param vitesseActuelle
 	 */
@@ -116,6 +118,7 @@ public class TractionMotor {
 
 	/**
 	 * Gestion du mouvement du véhicule (en marche et à l'arret)
+	 * 
 	 * @param move
 	 *                true pour démarrer, false pour arrêter
 	 */
@@ -143,6 +146,7 @@ public class TractionMotor {
 
 	/**
 	 * Mesure la distance parcourue par la traction. La mesure est une moyenne des deux roues
+	 * 
 	 * @return le nbr de degrés de la traction
 	 */
 	public int getTachoCount() {

@@ -5,6 +5,7 @@ import ch.astrepto.robot.capteurs.UltrasonicSensor;
 import ch.astrepto.robot.moteurs.DirectionMotor;
 import ch.astrepto.robot.moteurs.TractionMotor;
 import ch.astrepto.robot.moteurs.UltrasonicMotor;
+import lejos.utility.Delay;
 
 public class RobotControls {
 
@@ -86,9 +87,8 @@ public class RobotControls {
 		}
 		// si on est du petit côté
 		else {
-			startDetectionAngle = Math
-					.atan((Track.crossroadsLength - 6d) / (Track.crossroadsLength + 8d)) * 180d
-					/ Math.PI;
+			startDetectionAngle = Math.atan((Track.crossroadsLength - 6d) / (Track.crossroadsLength + 8d))
+					* 180d / Math.PI;
 			endDetectionAngle = Math.atan((Track.crossroadsLength - 6d + 40d) / 8d) * 180d / Math.PI;
 		}
 
@@ -183,14 +183,21 @@ public class RobotControls {
 
 	/**
 	 * Gestion des dépassements s'occupe de faire tourner le robot à la bonne "inclinaison" pour
-	 * lui faire rejoindre l'autre côté de la piste
+	 * lui faire rejoindre l'autre côté de la piste ATTENTION : le dépassement sous-entend
+	 * uniquement le virage effectué pour décrocher la piste et pouvoir ensuite rejoindre
+	 * l'autre côté. Du moment que le virage est fait, la variabe "dépassement" est fausse, mais
+	 * "hangOnTrack" reste fausse jusqu'à qu'on est à nouveau rejoint la piste
 	 */
 	public void overtaking() {
+
+		Track.hangOnTrack = false;
+
 		// règle l'angle que les roues doivent prendre pour changer de côté
 		int angle;
 		if (Track.trackSide == -1) {
 			angle = 0;
 		} else {
+			// angle des roues en fonction du rayon
 			if (Track.trackPart == 1) {
 				// - arcsin(empatement / petit rayon)
 				angle = -(int) (Math
@@ -206,15 +213,43 @@ public class RobotControls {
 			}
 		}
 		directionMotor.goTo(angle);
+		tractionMotor.setSpeed(TractionMotor.currentSpeed);
+	}
 
-		// la direction est désactivée, ensuite
-		if (tractionMotor.getTachoCount() >= (Track.smallRadius + TractionMotor.wheelSpacing) * 2 * Math.PI
-				/ TractionMotor.cmInDegres) {
-			directionMotor.goTo(0);
+	/**
+	 * Gestion de la fin du dépassement. Cette fin comprend 2 parties : la fin du virage pour
+	 * rejoind l'autre côté et la fin du bout droit jusqu'à l'autre côté
+	 * 
+	 * @param part
+	 *                partie de la fin du croisement. Vrai s'il faut fini le virage, faut s'il
+	 *                faut rejoindre l'autre côté. La valeur de part est la valeur de
+	 *                Track.overtaking
+	 */
+	public void overtakingEnd(boolean part) {
+		if (part) {
+			if (tractionMotor.getTachoCount() >= (Track.smallRadius + TractionMotor.wheelSpacing) * 2
+					* Math.PI / TractionMotor.cmInDegres) {
+				directionMotor.goTo(0);
+				Track.overtaking = false;
+			}
+		} else {
+			if (intensity <= (ColorSensor.trackMaxValue - 10)) {
+				Track.hangOnTrack = true;
+			}
 		}
-		// ensuite
-		// detecte color bleu
-		// réactive direction
+	}
 
+	/**
+	 * Arrête le robot à la fin
+	 */
+	public void robotStop() {
+		// arret du robot
+		tractionMotor.move(false);
+		// remet les roues droites
+		Delay.msDelay(500);
+		directionMotor.goTo(0);
+		// remet l'ultrason droit
+		Delay.msDelay(500);
+		ultrasonicMotor.goTo(0, false);
 	}
 }
