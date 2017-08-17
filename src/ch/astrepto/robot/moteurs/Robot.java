@@ -11,6 +11,7 @@ public class Robot {
 	TractionMotor tractionMotor;
 	ColorSensor color;
 	UltrasonicSensor ultrasonic;
+	private static float intensity = 0;
 
 	public Robot() {
 		directionMotor = new DirectionMotor();
@@ -20,33 +21,44 @@ public class Robot {
 		updateTrackInfos();
 		// piste = new Piste(1,1);
 		tractionMotor = new TractionMotor();
-
 	}
 
 	public void run() {
-		
-		// DIRECTION AUTOMATIQUE
-		// ne fait pas si dans le croisement
-		if (!Track.currentlyCrossing) {
+
+		// GESTION DU RELEVE LUMINEUX DE LA PISTE
+		// Est maj si pas "en train de passer le carrefour" et si pas "initialisation d'un
+		// dépassement"
+		if (!Track.inCrossroads && !Track.overtaking) {
+			updateLightIntensity();
+		}
+
+		// GESTION DE LA DIRECTION AUTOMATIQUE
+		// Est maj si pas "en train de passer le crossroads", si pas "arrivé au crossroads"
+		// et si pas "initialisation d'un dépassement"
+		if (!Track.inCrossroads && !Track.crossroads && !Track.overtaking) {
 			updateDirection();
 		}
 
-		// VITESSE AUTOMATIQUE
-		updateSpeed();
-
-		// GESTION DE L'ARRIVEE AU CROISEMENT
-		if (Track.crossing && !Track.currentlyCrossing) {
-			crossing();
+		// GESTION DE LA VITESSE AUTOMATIQUE
+		// Est maj si pas "intialisation d'un dépassement"
+		if (!Track.overtaking) {
+			updateSpeed();
 		}
-		
+		// GESTION DE L'ARRIVEE AU CROISEMENT
+		// Est maj si "arrivé au crossroads" mais pas "en train de passer le crossroads"
+		if (Track.crossroads && !Track.inCrossroads) {
+			crossroads();
+		}
+
 		// GESTION A L'INTERIEUR DU CROISEMENT
-		if (Track.currentlyCrossing) {
+		// Est maj si "en train de passer le crossroads"
+		if (Track.inCrossroads) {
 			// on attends de l'avoir passé pour redémarrer les fonctions de direction
 			detectEndCrossing();
 		}
 	}
 
-	private void crossing() {
+	private void crossroads() {
 		// n'est pas mis à la même condition juste en dessous pour accélérer le
 		// freinage (sinon lent à cause de goTo)
 		if (Track.trackPart == -1)
@@ -54,7 +66,7 @@ public class Robot {
 			tractionMotor.move(false);
 
 		// indique qu'on est en train de passer le croisement
-		Track.currentlyCrossing = true;
+		Track.inCrossroads = true;
 		tractionMotor.resetTacho();
 		// les roues se remettent droites
 		int angle = 0;
@@ -64,16 +76,18 @@ public class Robot {
 		// si on est au croisement à priorité
 		if (Track.trackPart == -1) {
 			// lance le balayage de priorité
-			rightPriority();
+			waitRightPriorityOk();
+			ultrasonicMotor.goTo(0, false);
+			tractionMotor.move(true);
 		}
 	}
 
 	private void detectEndCrossing() {
 		// on attends de l'avoir passé pour redémarrer les fonctions de direction
-		if (tractionMotor.getTachoCount() >= Track.crossingDistance / TractionMotor.cmInDegres) {
-			Track.currentlyCrossing = false;
-			Track.crossing = false;
-			Track.justAfterCrossing = true;
+		if (tractionMotor.getTachoCount() >= Track.crossroadsDistance / TractionMotor.cmInDegres) {
+			Track.inCrossroads = false;
+			Track.crossroads = false;
+			Track.justAfterCrossroads = true;
 			Track.changeTrackPart();
 			Track.changeTrackSide();
 			tractionMotor.resetTacho();
@@ -81,9 +95,9 @@ public class Robot {
 	}
 
 	/**
-	 * méthode d'action a effectué pour passer le croisement
+	 * attend que la priorité de droite soit ok pour continuer
 	 */
-	private void rightPriority() {
+	private void waitRightPriorityOk() {
 		double startDetectionAngle;
 		double endDetectionAngle;
 		// si on est du grand côté
@@ -91,14 +105,15 @@ public class Robot {
 			// ArcTan de opposé (6cm) sur adjacent (long.Piste + 8d, la
 			// profondeur du capteur dans le robot. Le tout *180/pi car
 			// la atan renvoi un radian
-			startDetectionAngle = Math.atan(6d / (Track.crossingDistance + 8d)) * 180d / Math.PI;
+			startDetectionAngle = Math.atan(6d / (Track.crossroadsDistance + 8d)) * 180d / Math.PI;
 			endDetectionAngle = Math.atan(40d / 8d) * 180d / Math.PI;
 		}
 		// si on est du petit côté
 		else {
-			startDetectionAngle = Math.atan((Track.crossingDistance - 6d) / (Track.crossingDistance + 8d))
-					* 180d / Math.PI;
-			endDetectionAngle = Math.atan((Track.crossingDistance - 6d + 40d) / 8d) * 180d / Math.PI;
+			startDetectionAngle = Math
+					.atan((Track.crossroadsDistance - 6d) / (Track.crossroadsDistance + 8d)) * 180d
+					/ Math.PI;
+			endDetectionAngle = Math.atan((Track.crossroadsDistance - 6d + 40d) / 8d) * 180d / Math.PI;
 		}
 
 		// on transforme au préalable les ° du cercle en ° de l'ultrason
@@ -142,33 +157,20 @@ public class Robot {
 			else {
 				blockedTrack = false;
 			}
-
 		}
-		ultrasonicMotor.goTo(0, false);
-		tractionMotor.move(true);
-
 	}
 
 	private void updateDirection() {
-		// on prend l'intensité actuelle et on ramène la valeur minimum à zéro
-		float intensity = color.getIntensity();
-
-		// si on est au croisement (+3 pour les variations lumineuses)
-		if (intensity <= ColorSensor.trackCrossingValue + 3)
-			// on indique qu'on est au croisement
-			Track.crossing = true;
-
-		// si on n'est pas au croisement et si le précédant mvt est fini
-		if (!Track.crossing && directionMotor.previousMoveComplete()
-				&& ultrasonicMotor.previousMoveComplete()) {
+		// Maj la direction si "le précédent mvt est fini"
+		if (directionMotor.previousMoveComplete() && ultrasonicMotor.previousMoveComplete()) {
 			// l'angle est déterminé par la situation du robot sur la piste
 			int angle = directionMotor.determineAngle(intensity);
 
 			// si on est juste après le croisement, l'angle est divisé par 2
-			// pour atténué la reprise de piste
-			if (Track.justAfterCrossing) {
+			// pour atténuer la reprise de piste
+			if (Track.justAfterCrossroads) {
 				angle /= 2;
-				Track.justAfterCrossing = false;
+				Track.justAfterCrossroads = false;
 			}
 
 			ultrasonicMotor.goTo(-angle, true);
@@ -179,6 +181,16 @@ public class Robot {
 	private void updateSpeed() {
 		float speed = tractionMotor.determineSpeed(ultrasonic.getDistance());
 		tractionMotor.setSpeed(speed);
+	}
+
+	private void updateLightIntensity() {
+		// Relève la valeur lumineuse actuelle
+		intensity = color.getIntensity();
+
+		// Détection du carrefour (+3 pour les variations lumineuses)
+		if (intensity <= ColorSensor.trackCrossingValue + 3)
+			// Indique qu'on est arrivé au carrefour
+			Track.crossroads = true;
 	}
 
 	private void overtaking() {
