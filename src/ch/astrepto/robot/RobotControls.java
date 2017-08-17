@@ -1,64 +1,35 @@
-package ch.astrepto.robot.moteurs;
+package ch.astrepto.robot;
 
-import ch.astrepto.robot.Track;
 import ch.astrepto.robot.capteurs.ColorSensor;
 import ch.astrepto.robot.capteurs.UltrasonicSensor;
+import ch.astrepto.robot.moteurs.DirectionMotor;
+import ch.astrepto.robot.moteurs.TractionMotor;
+import ch.astrepto.robot.moteurs.UltrasonicMotor;
 
-public class Robot {
+public class RobotControls {
 
-	DirectionMotor directionMotor;
-	UltrasonicMotor ultrasonicMotor;
-	TractionMotor tractionMotor;
-	ColorSensor color;
-	UltrasonicSensor ultrasonic;
+	private DirectionMotor directionMotor;
+	private UltrasonicMotor ultrasonicMotor;
+	private TractionMotor tractionMotor;
+	private ColorSensor color;
+	private UltrasonicSensor ultrasonic;
 	private static float intensity = 0;
 
-	public Robot() {
+	public RobotControls() {
 		directionMotor = new DirectionMotor();
 		ultrasonicMotor = new UltrasonicMotor();
 		color = new ColorSensor();
 		ultrasonic = new UltrasonicSensor();
-		updateTrackInfos();
+		Track.updateTrackInfos(color.getIntensity());
 		// piste = new Piste(1,1);
 		tractionMotor = new TractionMotor();
 	}
 
-	public void run() {
-
-		// GESTION DU RELEVE LUMINEUX DE LA PISTE
-		// Est maj si pas "en train de passer le carrefour" et si pas "initialisation d'un
-		// dépassement"
-		if (!Track.inCrossroads && !Track.overtaking) {
-			updateLightIntensity();
-		}
-
-		// GESTION DE LA DIRECTION AUTOMATIQUE
-		// Est maj si pas "en train de passer le crossroads", si pas "arrivé au crossroads"
-		// et si pas "initialisation d'un dépassement"
-		if (!Track.inCrossroads && !Track.crossroads && !Track.overtaking) {
-			updateDirection();
-		}
-
-		// GESTION DE LA VITESSE AUTOMATIQUE
-		// Est maj si pas "intialisation d'un dépassement"
-		if (!Track.overtaking) {
-			updateSpeed();
-		}
-		// GESTION DE L'ARRIVEE AU CROISEMENT
-		// Est maj si "arrivé au crossroads" mais pas "en train de passer le crossroads"
-		if (Track.crossroads && !Track.inCrossroads) {
-			crossroads();
-		}
-
-		// GESTION A L'INTERIEUR DU CROISEMENT
-		// Est maj si "en train de passer le crossroads"
-		if (Track.inCrossroads) {
-			// on attends de l'avoir passé pour redémarrer les fonctions de direction
-			detectEndCrossing();
-		}
-	}
-
-	private void crossroads() {
+	/**
+	 * Gestion du carrefour Une fois le carrefour détecté, cette section réagit en fonction du
+	 * côté du croisement
+	 */
+	public void crossroads() {
 		// n'est pas mis à la même condition juste en dessous pour accélérer le
 		// freinage (sinon lent à cause de goTo)
 		if (Track.trackPart == -1)
@@ -82,9 +53,13 @@ public class Robot {
 		}
 	}
 
-	private void detectEndCrossing() {
+	/**
+	 * Gestion de la détection de la fin du carrefour Détecte la fin du carrefour et maj les
+	 * indications de piste
+	 */
+	public void crossroadsEnd() {
 		// on attends de l'avoir passé pour redémarrer les fonctions de direction
-		if (tractionMotor.getTachoCount() >= Track.crossroadsDistance / TractionMotor.cmInDegres) {
+		if (tractionMotor.getTachoCount() >= Track.crossroadsLength / TractionMotor.cmInDegres) {
 			Track.inCrossroads = false;
 			Track.crossroads = false;
 			Track.justAfterCrossroads = true;
@@ -95,7 +70,8 @@ public class Robot {
 	}
 
 	/**
-	 * attend que la priorité de droite soit ok pour continuer
+	 * Gestion de la priorité de droite laisse continuer le robot seulement si aucun véhicule
+	 * devant avoir la priorité n'est détecté
 	 */
 	private void waitRightPriorityOk() {
 		double startDetectionAngle;
@@ -105,15 +81,15 @@ public class Robot {
 			// ArcTan de opposé (6cm) sur adjacent (long.Piste + 8d, la
 			// profondeur du capteur dans le robot. Le tout *180/pi car
 			// la atan renvoi un radian
-			startDetectionAngle = Math.atan(6d / (Track.crossroadsDistance + 8d)) * 180d / Math.PI;
+			startDetectionAngle = Math.atan(6d / (Track.crossroadsLength + 8d)) * 180d / Math.PI;
 			endDetectionAngle = Math.atan(40d / 8d) * 180d / Math.PI;
 		}
 		// si on est du petit côté
 		else {
 			startDetectionAngle = Math
-					.atan((Track.crossroadsDistance - 6d) / (Track.crossroadsDistance + 8d)) * 180d
+					.atan((Track.crossroadsLength - 6d) / (Track.crossroadsLength + 8d)) * 180d
 					/ Math.PI;
-			endDetectionAngle = Math.atan((Track.crossroadsDistance - 6d + 40d) / 8d) * 180d / Math.PI;
+			endDetectionAngle = Math.atan((Track.crossroadsLength - 6d + 40d) / 8d) * 180d / Math.PI;
 		}
 
 		// on transforme au préalable les ° du cercle en ° de l'ultrason
@@ -160,7 +136,11 @@ public class Robot {
 		}
 	}
 
-	private void updateDirection() {
+	/**
+	 * Gestion de la direction automatique une fois que la précédente direction est terminée, la
+	 * nouvelle est déterminée en fonction de l'intensité lumineuse détectée
+	 */
+	public void updateDirection() {
 		// Maj la direction si "le précédent mvt est fini"
 		if (directionMotor.previousMoveComplete() && ultrasonicMotor.previousMoveComplete()) {
 			// l'angle est déterminé par la situation du robot sur la piste
@@ -178,12 +158,20 @@ public class Robot {
 		}
 	}
 
-	private void updateSpeed() {
+	/**
+	 * Gestion de la vitesse automatique la vitesse est déterminée en fonction de la distance en
+	 * cm mesurée
+	 */
+	public void updateSpeed() {
 		float speed = tractionMotor.determineSpeed(ultrasonic.getDistance());
 		tractionMotor.setSpeed(speed);
 	}
 
-	private void updateLightIntensity() {
+	/**
+	 * Gestion de la détection de l'intensité lumineuse au sol Relève l'intensité lumineuse et
+	 * détecte le croisement
+	 */
+	public void updateLightIntensity() {
 		// Relève la valeur lumineuse actuelle
 		intensity = color.getIntensity();
 
@@ -193,9 +181,11 @@ public class Robot {
 			Track.crossroads = true;
 	}
 
-	private void overtaking() {
-		// UPDATE DIRECTION
-
+	/**
+	 * Gestion des dépassements s'occupe de faire tourner le robot à la bonne "inclinaison" pour
+	 * lui faire rejoindre l'autre côté de la piste
+	 */
+	public void overtaking() {
 		// règle l'angle que les roues doivent prendre pour changer de côté
 		int angle;
 		if (Track.trackSide == -1) {
@@ -227,20 +217,4 @@ public class Robot {
 		// réactive direction
 
 	}
-
-	private void updateTrackInfos() {
-		// valeur 0 = partieHuit, valeur 1 = cotePiste
-
-		// on relève la couleur du sol
-		if (color.getIntensity() >= ColorSensor.trackMaxValue - 15)
-			// si c'est le blanc, partie -1
-			Track.trackPart = -1;
-		else
-			// sinon, partie 1
-			Track.trackPart = 1;
-
-		// on commence toujours sur le grand côté
-		Track.trackSide = 1;
-	}
-
 }

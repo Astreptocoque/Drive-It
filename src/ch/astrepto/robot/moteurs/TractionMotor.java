@@ -1,9 +1,6 @@
 package ch.astrepto.robot.moteurs;
 
 import ch.astrepto.robot.Track;
-import ch.astrepto.robot.capteurs.ColorSensor;
-import ch.astrepto.robot.capteurs.UltrasonicSensor;
-import lejos.hardware.lcd.LCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 
@@ -14,13 +11,14 @@ public class TractionMotor {
 
 	private static boolean isMoving = false;
 	public final static float maxSpeed = 200f;
-	public final static float cmInDegres = 0.037699112f;
+	public final static float cmInDegres = 0.037699112f; // pas touche (en fct des roues)
 	public final static float wheelSpacing = 9.5f;
-	private final static float lastLimit = 10f; // après, le robot stop
+	// LIMITES DE DETECTION D'UN VEHICULE
+	private final static float lastLimit = 10f; // en dessous, le robot stop
 	private final static float secondLimit = 15f; // jusqu'ici, le robot garde 75% de sa vitesse
 	private final static float firstLimit = 30f; // passé cette limite, le robot est à plein
 							// régime
-	private final static float speedAtSecondLimit = 3f/4f;
+	private final static float speedAtSecondLimit = 3f / 4f; // % de vitesse à la 2ème limite
 	private static float currentSpeed;
 
 	public TractionMotor() {
@@ -39,7 +37,7 @@ public class TractionMotor {
 	}
 
 	/**
-	 * règle la vitesse et l'ajuste pour chaque roue de traction en fonction du virage
+	 * Règle la vitesse et l'ajuste pour chaque roue de traction en fonction du virage
 	 * 
 	 * @param vitesseActuelle
 	 */
@@ -55,22 +53,22 @@ public class TractionMotor {
 			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			// puis en fonction du degré de rotation
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentAngle());
 		} else if (Track.trackSide == -1 && Track.trackPart == -1) {
 			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentAngle());
 			speedRightMotor = vitesseActuelle;
 		} else if (Track.trackSide == 1 && Track.trackPart == -1) {
 			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentAngle());
 			speedRightMotor = vitesseActuelle;
 		} else if (Track.trackSide == -1 && Track.trackPart == 1) {
 			speedRightMotor = vitesseActuelle;
 			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentAngle());
 
 		}
 
@@ -92,25 +90,32 @@ public class TractionMotor {
 		}
 	}
 
+	/**
+	 * Détermine la vitesse en fonction de la distance mesurée
+	 * 
+	 * @param distance
+	 *                La distance mesurée
+	 * @return la vitesse
+	 */
 	public float determineSpeed(float distance) {
 		float speed;
 
 		if (distance > firstLimit) {
 			speed = maxSpeed;
 		} else if (distance <= firstLimit && distance > secondLimit) {
-			speed = (speedAtSecondLimit * maxSpeed) + (maxSpeed - (speedAtSecondLimit * maxSpeed)) / (firstLimit - secondLimit)
-					* (distance - secondLimit);
+			speed = (speedAtSecondLimit * maxSpeed) + (maxSpeed - (speedAtSecondLimit * maxSpeed))
+					/ (firstLimit - secondLimit) * (distance - secondLimit);
 		} else if (distance <= secondLimit && distance > lastLimit) {
 			speed = (speedAtSecondLimit * maxSpeed) / (secondLimit - lastLimit) * (distance - lastLimit);
 		} else {
 			speed = 0;
 		}
-		
+
 		return speed;
 	}
 
 	/**
-	 * 
+	 * Gestion du mouvement du véhicule (en marche et à l'arret)
 	 * @param move
 	 *                true pour démarrer, false pour arrêter
 	 */
@@ -126,13 +131,20 @@ public class TractionMotor {
 		}
 
 		motorLeft.endSynchronization();
-	}	
-	
+	}
+
+	/**
+	 * Réinitialise le tachometre de la traction (roues gauche et droite)
+	 */
 	public void resetTacho() {
 		motorLeft.resetTachoCount();
 		rightMotor.resetTachoCount();
 	}
 
+	/**
+	 * Mesure la distance parcourue par la traction. La mesure est une moyenne des deux roues
+	 * @return le nbr de degrés de la traction
+	 */
 	public int getTachoCount() {
 		return (motorLeft.getTachoCount() + rightMotor.getTachoCount()) / 2 * -1;
 	}

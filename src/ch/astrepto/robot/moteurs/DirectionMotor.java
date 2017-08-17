@@ -7,7 +7,6 @@ import lejos.hardware.port.MotorPort;
 import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.robotics.SampleProvider;
-import lejos.utility.Delay;
 
 public class DirectionMotor {
 
@@ -21,7 +20,7 @@ public class DirectionMotor {
 	public final static int maxAngle = 43; // 132 degrés = 43 degré du cercle
 	public final static double wheelBase = 13d; // 13 cm, l'empattement (espace entre roues
 							// arrières et avant)
-	private static int currentDegreeDestination;
+	private static int currentAngleDestination;
 
 	public DirectionMotor() {
 		directionMotor = new EV3MediumRegulatedMotor(MotorPort.A);
@@ -59,7 +58,7 @@ public class DirectionMotor {
 	}
 
 	/**
-	 * 
+	 * Gestion de la direction des roues avants
 	 * @param angleP
 	 *                angle auquel on veut se rendre
 	 */
@@ -76,15 +75,15 @@ public class DirectionMotor {
 		// si l'angle est supérieure au maximum à gauche
 		if (angleP < -maxDegree) {
 			angle = -maxDegree - currentAngle;
-			currentDegreeDestination = -maxDegree;
+			currentAngleDestination = -maxDegree;
 			// si l'angle est supérieur au max à droite
 		} else if (angleP > maxDegree) {
 			angle = maxDegree - currentAngle;
-			currentDegreeDestination = maxDegree;
+			currentAngleDestination = maxDegree;
 			// sinon
 		} else {
 			angle = angleP - currentAngle;
-			currentDegreeDestination = angleP;
+			currentAngleDestination = angleP;
 		}
 
 		directionMotor.rotate(angle, true);
@@ -92,7 +91,7 @@ public class DirectionMotor {
 	}
 
 	/**
-	 * determine l'angle en fonction de la position sur la piste
+	 * Determine l'angle en fonction de la luminosité mesurée et de la position sur la piste
 	 * 
 	 * @param trackSide
 	 *                1 ou -1, grand côté ou petit côté
@@ -130,12 +129,20 @@ public class DirectionMotor {
 		return angle;
 	}
 
+	/**
+	 *  
+	 * @return vrai si le moteur a fini son précédent mouvement
+	 */
 	public boolean previousMoveComplete() {
 		return !directionMotor.isMoving();
 	}
 
-	public static int getCurrentDegree() {
-		return currentDegreeDestination;
+	/**
+	 * ATTENTION : ne renvoi pas l'angle actuel du robot mais l'angle final.
+	 * @return le degré du robot
+	 */
+	public static int getCurrentAngle() {
+		return currentAngleDestination;
 	}
 
 	/**

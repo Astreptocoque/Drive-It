@@ -75,19 +75,15 @@ public class UltrasonicMotor {
 		ultrasonicMotor.rotate(angle, true);
 	}
 
-	public void stop() {
-		ultrasonicMotor.stop();
-	}
-
 	/**
-	 * attends que le moteur ai fini son mouvement
+	 * Attends que le moteur ai fini son mouvement
 	 */
 	public void waitComplete() {
 		ultrasonicMotor.waitComplete();
 	}
 
 	/**
-	 * 
+	 * Renvoi si le moteur est en mouvement
 	 * @return vrai si le moteur ne fait plus de mouvement
 	 */
 	public boolean previousMoveComplete() {

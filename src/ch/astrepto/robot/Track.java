@@ -1,24 +1,62 @@
 package ch.astrepto.robot;
 
+import ch.astrepto.robot.capteurs.ColorSensor;
+
 public class Track {
 
-	public static boolean crossroads = false;
+	// VARIABLES POUR LA SITUATION SUR LA PISTE
 	public static int trackSide; // 1 si grand, -1 si petit
 	public static int trackPart; // 1 côté avec priorité de droite, -1 côté prioritaire
-	public static boolean inCrossroads = false;
-	public static boolean overtaking = false;
-	// var permettant d'atténuer l'angle détecté juste après le croisement et au démarrage
-	public static boolean justAfterCrossroads = true;
-	public final static float crossroadsDistance = 30; // en cm
 	public final static float smallRadius = 10;
 	public final static float largeRadius = 35;
-	// longueur du croisement à modifier (première valeur)
 
+	// VARIABLES POUR LE CARREFOUR
+	public static boolean crossroads = false; // si arrivé au carrrefour
+	public static boolean inCrossroads = false; // si en train de passer le carrefour
+	// var permettant d'atténuer l'angle détecté juste après le carrefour et au démarrage
+	public static boolean justAfterCrossroads = true;
+
+	// VARIABLES POUR LES DEPASSEMENTS
+	public static boolean overtaking = false; // si en train de dépasser
+	public static boolean hangOnTrack = true; // si en train de suivre la piste (avec le
+							// dégradé)
+	public final static float crossroadsLength = 30; // en cm
+
+	/**
+	 * Change le côté de la piste
+	 */
 	public static void changeTrackSide() {
 		trackSide *= -1;
 	}
 
+	/**
+	 * Change la partie de la piste (du huit)
+	 */
 	public static void changeTrackPart() {
 		trackPart *= -1;
 	}
+
+	/**
+	 * Gestion des informations de la piste Appelée en début de programme, cette méthode permet
+	 * au robot de se situer sur la piste. Le robot doit être placé sur le bleu extérieur si sur
+	 * la partie 1 de la piste, sur le blanc si sur la partie -1 de la piste
+	 * 
+	 * @param intensity
+	 *                l'intensité lumineuse mesurée
+	 */
+	public static void updateTrackInfos(float intensity) {
+		// valeur 0 = partieHuit, valeur 1 = cotePiste
+
+		// on relève la couleur du sol
+		if (intensity >= ColorSensor.trackMaxValue - 15)
+			// si c'est le blanc, partie -1
+			Track.trackPart = -1;
+		else
+			// sinon, partie 1
+			Track.trackPart = 1;
+
+		// on commence toujours sur le grand côté
+		Track.trackSide = 1;
+	}
+
 }
