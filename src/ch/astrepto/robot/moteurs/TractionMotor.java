@@ -15,7 +15,7 @@ public class TractionMotor {
 	private static boolean isMoving = false;
 	public final static float maxSpeed = 200f;
 	public final static float cmInDegres = 0.037699112f;
-	private final static float wheelSpacing = 9.5f;
+	public final static float wheelSpacing = 9.5f;
 	private final static float lastLimit = 10f; // après, le robot stop
 	private final static float secondLimit = 15f; // jusqu'ici, le robot garde 75% de sa vitesse
 	private final static float firstLimit = 30f; // passé cette limite, le robot est à plein
@@ -55,22 +55,22 @@ public class TractionMotor {
 			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			// puis en fonction du degré de rotation
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
 		} else if (Track.trackSide == -1 && Track.trackPart == -1) {
 			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
 			speedRightMotor = vitesseActuelle;
 		} else if (Track.trackSide == 1 && Track.trackPart == -1) {
 			speedLeftMotor = (Track.largeRadius - wheelSpacing) * vitesseActuelle / Track.largeRadius;
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
 			speedRightMotor = vitesseActuelle;
 		} else if (Track.trackSide == -1 && Track.trackPart == 1) {
 			speedRightMotor = vitesseActuelle;
 			speedLeftMotor = Track.smallRadius * vitesseActuelle / (Track.smallRadius + wheelSpacing);
 			speedLeftMotor = vitesseActuelle - ((vitesseActuelle - speedLeftMotor)
-					/ DirectionMotor.maxAngle * DirectionMotor.getCurrentAngle());
+					/ DirectionMotor.maxDegree * DirectionMotor.getCurrentDegree());
 
 		}
 

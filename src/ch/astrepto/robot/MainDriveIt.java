@@ -1,6 +1,8 @@
 package ch.astrepto.robot;
 
+import ch.astrepto.robot.moteurs.DirectionMotor;
 import ch.astrepto.robot.moteurs.Robot;
+import lejos.utility.Delay;
 
 public class MainDriveIt {
 
@@ -13,6 +15,7 @@ public class MainDriveIt {
 			robot.run();
 
 		}
+
 
 	}
 }

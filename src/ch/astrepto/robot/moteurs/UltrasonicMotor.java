@@ -14,9 +14,9 @@ public class UltrasonicMotor {
 	private float[] sampleUltrasonicTouchSensor;
 
 	private final static int maxSpeed = 1000;
-	public final static int maxAngle = 2300; // de droit à un bord
-	private final static int maxDirectionAngle = 1190;
-	private static int currentAngle;
+	public final static int maxDegree = 2300; // de droit à un bord
+	private final static int maxDirectionDegree = 1190;
+	private static int currentDegree;
 
 	public UltrasonicMotor() {
 		ultrasonicMotor = new NXTRegulatedMotor(MotorPort.D);
@@ -33,7 +33,7 @@ public class UltrasonicMotor {
 
 			if (this.sampleUltrasonicTouchSensor[0] == 1) {
 				ultrasonicMotor.stop();
-				ultrasonicMotor.rotate(-maxAngle);
+				ultrasonicMotor.rotate(-maxDegree);
 				boucle = false;
 			}
 		}
@@ -56,12 +56,12 @@ public class UltrasonicMotor {
 		if (ultrasonicMotor.isMoving())
 			ultrasonicMotor.stop();
 
-		currentAngle = ultrasonicMotor.getTachoCount();
+		currentDegree = ultrasonicMotor.getTachoCount();
 
 		// si l'angle est lié au roue
 		if (boundWithWheels) {
 			// mise à l'échelle de l'angle Direction à l'angle Ultrason
-			angle = maxDirectionAngle / DirectionMotor.maxAngle * angleP;
+			angle = maxDirectionDegree / DirectionMotor.maxDegree * angleP;
 			// transformation de l'angle final en nombre de ° que doit faire le robot
 			
 		}
@@ -71,7 +71,7 @@ public class UltrasonicMotor {
 			angle = angleP;
 		}
 		
-		angle = angle - currentAngle;
+		angle = angle - currentDegree;
 		ultrasonicMotor.rotate(angle, true);
 	}
 

@@ -17,8 +17,11 @@ public class DirectionMotor {
 	private float[] sampleDirectionTouchSensor;
 
 	private final static int maxSpeed = 122;
-	public final static int maxAngle = 132; // de droit à un bord
-	private static int currentAngleDestination;
+	public final static int maxDegree = 132; // de droit à un bord
+	public final static int maxAngle = 43; // 132 degrés = 43 degré du cercle
+	public final static double wheelBase = 13d; // 13 cm, l'empattement (espace entre roues
+							// arrières et avant)
+	private static int currentDegreeDestination;
 
 	public DirectionMotor() {
 		directionMotor = new EV3MediumRegulatedMotor(MotorPort.A);
@@ -66,20 +69,23 @@ public class DirectionMotor {
 			directionMotor.stop();
 
 		int currentAngle = directionMotor.getTachoCount();
-		currentAngleDestination = angleP;
 
 		// transformation de l'angle final en nombre de ° que doit faire le robot
 		int angle;
 
 		// si l'angle est supérieure au maximum à gauche
-		if (currentAngleDestination < -maxAngle)
-			angle = -maxAngle - currentAngle;
-		// si l'angle est supérieur au max à droite
-		else if (currentAngleDestination > maxAngle)
-			angle = maxAngle - currentAngle;
-		// sinon
-		else
-			angle = currentAngleDestination - currentAngle;
+		if (angleP < -maxDegree) {
+			angle = -maxDegree - currentAngle;
+			currentDegreeDestination = -maxDegree;
+			// si l'angle est supérieur au max à droite
+		} else if (angleP > maxDegree) {
+			angle = maxDegree - currentAngle;
+			currentDegreeDestination = maxDegree;
+			// sinon
+		} else {
+			angle = angleP - currentAngle;
+			currentDegreeDestination = angleP;
+		}
 
 		directionMotor.rotate(angle, true);
 
@@ -104,27 +110,21 @@ public class DirectionMotor {
 
 		// on determine la nouvelle valeur de degré à tourner au robot
 		if (Track.trackSide == 1 && Track.trackPart == 1) {
-			angle = (int) ((((maxAngle + negativeAngle) - (maxAngle + negativeAngle)
+			angle = (int) ((((maxDegree + negativeAngle) - (maxDegree + negativeAngle)
 					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
 					* (intensity - ColorSensor.trackMinValue)) - negativeAngle) * -1);
 		} else if (Track.trackSide == -1 && Track.trackPart == -1) {
-			angle = (int) (((maxAngle + negativeAngle)
+			angle = (int) (((maxDegree + negativeAngle)
 					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
 					* (intensity - ColorSensor.trackMinValue)) - negativeAngle);
 		} else if (Track.trackSide == 1 && Track.trackPart == -1) {
-			angle = (int) ((((maxAngle + negativeAngle) - (maxAngle + negativeAngle)
+			angle = (int) ((((maxDegree + negativeAngle) - (maxDegree + negativeAngle)
 					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
 					* (intensity - ColorSensor.trackMinValue)) - negativeAngle));
 		} else if (Track.trackSide == -1 && Track.trackPart == 1) {
-			angle = (int) ((((maxAngle + negativeAngle)
+			angle = (int) ((((maxDegree + negativeAngle)
 					/ (ColorSensor.trackMaxValue - ColorSensor.trackMinValue)
 					* (intensity - ColorSensor.trackMinValue)) - negativeAngle) * -1);
-		}
-		// si on est juste après le croisement, l'angle est divisé par 2
-		// pour atténué la reprise de piste
-		if (Track.justAfterCrossing) {
-			angle /= 2;
-			Track.justAfterCrossing = false;
 		}
 
 		return angle;
@@ -134,8 +134,8 @@ public class DirectionMotor {
 		return !directionMotor.isMoving();
 	}
 
-	public static int getCurrentAngle() {
-		return currentAngleDestination;
+	public static int getCurrentDegree() {
+		return currentDegreeDestination;
 	}
 
 	/**

@@ -24,78 +24,66 @@ public class Robot {
 	}
 
 	public void run() {
-
-		// UPDATE DIRECTION
+		
+		// DIRECTION AUTOMATIQUE
 		// ne fait pas si dans le croisement
 		if (!Track.currentlyCrossing) {
-			// on prend l'intensité actuelle et on ramène la valeur minimum à zéro
-			float intensity = color.getIntensity();
-
-			// si on est au croisement (+3 pour les variations lumineuses)
-			if (intensity <= ColorSensor.trackCrossingValue + 3)
-				// on indique qu'on est au croisement
-				Track.crossing = true;
-
-			// si on n'est pas au croisement et si le précédant mvt est fini
-			if (!Track.crossing && directionMotor.previousMoveComplete()
-					&& ultrasonicMotor.previousMoveComplete() ) {
-				// l'angle est déterminé par la situation du robot sur la piste
-				int angle = directionMotor.determineAngle(intensity);
-				
-				ultrasonicMotor.goTo(-angle, true);
-				directionMotor.goTo(angle);
-			}
+			updateDirection();
 		}
-		// UPDATE SPEED
-		float speed = tractionMotor.determineSpeed(ultrasonic.getDistance());
-		tractionMotor.setSpeed(speed);
 
-		// UPDATE MOVE
-		updateMove();
-	}
+		// VITESSE AUTOMATIQUE
+		updateSpeed();
 
-	private void updateMove() {
-		// si on est arrivé au croisement
+		// GESTION DE L'ARRIVEE AU CROISEMENT
 		if (Track.crossing && !Track.currentlyCrossing) {
-
-			// n'est pas mis à la même condition juste en dessous pour accélérer le
-			// freinage (sinon lent à cause de goTo)
-			if (Track.trackPart == -1)
-				// arrête le robot
-				tractionMotor.move(false);
-
-			// indique qu'on est dans le croisement
-			Track.currentlyCrossing = true;
-			tractionMotor.resetTacho();
-			// les roues se remettent droites
-			int angle = 0;
-			ultrasonicMotor.goTo(-angle, true);
-			directionMotor.goTo(angle);
-
-			// si on est au croisement à priorité
-			if (Track.trackPart == -1) {
-				// lance le balayage de priorité
-				crossing();
-			}
+			crossing();
 		}
-		// si on est actuellement dans le croisement
+		
+		// GESTION A L'INTERIEUR DU CROISEMENT
 		if (Track.currentlyCrossing) {
 			// on attends de l'avoir passé pour redémarrer les fonctions de direction
-			if (tractionMotor.getTachoCount() >= Track.crossingDistance / TractionMotor.cmInDegres) {
-				Track.currentlyCrossing = false;
-				Track.crossing = false;
-				Track.justAfterCrossing = true;
-				Track.changeTrackPart();
-				Track.changeTrackSide();
-				tractionMotor.resetTacho();
-			}
+			detectEndCrossing();
+		}
+	}
+
+	private void crossing() {
+		// n'est pas mis à la même condition juste en dessous pour accélérer le
+		// freinage (sinon lent à cause de goTo)
+		if (Track.trackPart == -1)
+			// arrête le robot
+			tractionMotor.move(false);
+
+		// indique qu'on est en train de passer le croisement
+		Track.currentlyCrossing = true;
+		tractionMotor.resetTacho();
+		// les roues se remettent droites
+		int angle = 0;
+		ultrasonicMotor.goTo(-angle, true);
+		directionMotor.goTo(angle);
+
+		// si on est au croisement à priorité
+		if (Track.trackPart == -1) {
+			// lance le balayage de priorité
+			rightPriority();
+		}
+	}
+
+	private void detectEndCrossing() {
+		// on attends de l'avoir passé pour redémarrer les fonctions de direction
+		if (tractionMotor.getTachoCount() >= Track.crossingDistance / TractionMotor.cmInDegres) {
+			Track.currentlyCrossing = false;
+			Track.crossing = false;
+			Track.justAfterCrossing = true;
+			Track.changeTrackPart();
+			Track.changeTrackSide();
+			tractionMotor.resetTacho();
 		}
 	}
 
 	/**
 	 * méthode d'action a effectué pour passer le croisement
 	 */
-	private void crossing() {
+	private void rightPriority() {
 		double startDetectionAngle;
 		double endDetectionAngle;
 		// si on est du grand côté
@@ -114,8 +102,8 @@ public class Robot {
 		}
 
 		// on transforme au préalable les ° du cercle en ° de l'ultrason
-		startDetectionAngle = UltrasonicMotor.maxAngle / 90 * startDetectionAngle;
-		endDetectionAngle = UltrasonicMotor.maxAngle / 90 * endDetectionAngle;
+		startDetectionAngle = UltrasonicMotor.maxDegree / 90 * startDetectionAngle;
+		endDetectionAngle = UltrasonicMotor.maxDegree / 90 * endDetectionAngle;
 
 		// System.out.println(startDetectionAngle);
 		// System.out.println(endDetectionAngle);
@@ -161,7 +149,74 @@ public class Robot {
 
 	}
 
-	public void updateTrackInfos() {
+	private void updateDirection() {
+		// on prend l'intensité actuelle et on ramène la valeur minimum à zéro
+		float intensity = color.getIntensity();
+
+		// si on est au croisement (+3 pour les variations lumineuses)
+		if (intensity <= ColorSensor.trackCrossingValue + 3)
+			// on indique qu'on est au croisement
+			Track.crossing = true;
+
+		// si on n'est pas au croisement et si le précédant mvt est fini
+		if (!Track.crossing && directionMotor.previousMoveComplete()
+				&& ultrasonicMotor.previousMoveComplete()) {
+			// l'angle est déterminé par la situation du robot sur la piste
+			int angle = directionMotor.determineAngle(intensity);
+
+			// si on est juste après le croisement, l'angle est divisé par 2
+			// pour atténué la reprise de piste
+			if (Track.justAfterCrossing) {
+				angle /= 2;
+				Track.justAfterCrossing = false;
+			}
+
+			ultrasonicMotor.goTo(-angle, true);
+			directionMotor.goTo(angle);
+		}
+	}
+
+	private void updateSpeed() {
+		float speed = tractionMotor.determineSpeed(ultrasonic.getDistance());
+		tractionMotor.setSpeed(speed);
+	}
+
+	private void overtaking() {
+		// UPDATE DIRECTION
+
+		// règle l'angle que les roues doivent prendre pour changer de côté
+		int angle;
+		if (Track.trackSide == -1) {
+			angle = 0;
+		} else {
+			if (Track.trackPart == 1) {
+				// - arcsin(empatement / petit rayon)
+				angle = -(int) (Math
+						.asin(DirectionMotor.wheelBase
+								/ (Track.smallRadius + DirectionMotor.wheelBase))
+						* 180d / Math.PI);
+			} else {
+				// arcsin(empatement / petit rayon)
+				angle = (int) (Math
+						.asin(DirectionMotor.wheelBase
+								/ (Track.smallRadius + DirectionMotor.wheelBase))
+						* 180d / Math.PI);
+			}
+		}
+		directionMotor.goTo(angle);
+
+		// la direction est désactivée, ensuite
+		if (tractionMotor.getTachoCount() >= (Track.smallRadius + TractionMotor.wheelSpacing) * 2 * Math.PI
+				/ TractionMotor.cmInDegres) {
+			directionMotor.goTo(0);
+		}
+		// ensuite
+		// detecte color bleu
+		// réactive direction
+
+	}
+
+	private void updateTrackInfos() {
 		// valeur 0 = partieHuit, valeur 1 = cotePiste
 
 		// on relève la couleur du sol
