@@ -5,6 +5,8 @@ import ch.astrepto.robot.capteurs.UltrasonicSensor;
 import ch.astrepto.robot.moteurs.DirectionMotor;
 import ch.astrepto.robot.moteurs.TractionMotor;
 import ch.astrepto.robot.moteurs.UltrasonicMotor;
+import lejos.hardware.Button;
+import lejos.hardware.Sound;
 import lejos.utility.Delay;
 
 public class RobotControls {
@@ -15,6 +17,8 @@ public class RobotControls {
 	private ColorSensor color;
 	private UltrasonicSensor ultrasonic;
 	private static float intensity = 0;
+	private static float previousSpeed = 0;
+	private static float previousTachoCount = 0;
 
 	public RobotControls() {
 		directionMotor = new DirectionMotor();
@@ -22,8 +26,8 @@ public class RobotControls {
 		color = new ColorSensor();
 		ultrasonic = new UltrasonicSensor();
 		Track.updateTrackInfos(color.getIntensity());
-		// piste = new Piste(1,1);
 		tractionMotor = new TractionMotor();
+		previousSpeed = TractionMotor.currentSpeed;
 	}
 
 	/**
@@ -96,9 +100,6 @@ public class RobotControls {
 		startDetectionAngle = UltrasonicMotor.maxDegree / 90 * startDetectionAngle;
 		endDetectionAngle = UltrasonicMotor.maxDegree / 90 * endDetectionAngle;
 
-		// System.out.println(startDetectionAngle);
-		// System.out.println(endDetectionAngle);
-
 		// l'ultrason se rend au début de son tracé de mesure
 		ultrasonicMotor.goTo((int) startDetectionAngle, false);
 		ultrasonicMotor.waitComplete();
@@ -140,21 +141,39 @@ public class RobotControls {
 	 * Gestion de la direction automatique une fois que la précédente direction est terminée, la
 	 * nouvelle est déterminée en fonction de l'intensité lumineuse détectée
 	 */
-	public void updateDirection() {
-		// Maj la direction si "le précédent mvt est fini"
-		if (directionMotor.previousMoveComplete() && ultrasonicMotor.previousMoveComplete()) {
-			// l'angle est déterminé par la situation du robot sur la piste
-			int angle = directionMotor.determineAngle(intensity);
+	public void updateDirection(boolean notUltrasonic) {
+		// si l'ultrason n'est pas lié aux roues
+		if (notUltrasonic) {
+			// Maj la direction si "le précédent mvt est fini"
+			if (directionMotor.previousMoveComplete()) {
+				// l'angle est déterminé par la situation du robot sur la piste
+				int angle = directionMotor.determineAngle(intensity);
 
-			// si on est juste après le croisement, l'angle est divisé par 2
-			// pour atténuer la reprise de piste
-			if (Track.justAfterCrossroads) {
-				angle /= 2;
-				Track.justAfterCrossroads = false;
+				directionMotor.goTo(angle);
 			}
+		}
+		// si l'ultrason bouge avec les roues
+		else {
+			// Maj la direction si "le précédent mvt est fini"
+			if (directionMotor.previousMoveComplete() && ultrasonicMotor.previousMoveComplete()) {
+				
+				if(Track.ultrasonicRepositioning){
+					Track.ultrasonicRepositioning = false;
+					Sound.buzz();
+				}
+				// l'angle est déterminé par la situation du robot sur la piste
+				int angle = directionMotor.determineAngle(intensity);
 
-			ultrasonicMotor.goTo(-angle, true);
-			directionMotor.goTo(angle);
+				// si on est juste après le croisement, l'angle est divisé par 2
+				// pour atténuer la reprise de piste
+				if (Track.justAfterCrossroads) {
+					angle /= 2;
+					Track.justAfterCrossroads = false;
+				}
+
+				ultrasonicMotor.goTo(-angle, true);
+				directionMotor.goTo(angle);
+			}
 		}
 	}
 
@@ -163,8 +182,60 @@ public class RobotControls {
 	 * cm mesurée
 	 */
 	public void updateSpeed() {
+		// définition de la vitesse
 		float speed = tractionMotor.determineSpeed(ultrasonic.getDistance());
 		tractionMotor.setSpeed(speed);
+	}
+
+	public void isThereAnOvertaking() {
+		// analyse de la vitesse pour év. commencer un dépasssement
+		// si la vitesse précédente est plus petite, c'est qu'on réaccélère, donc qu'on a
+		// atteint la vitesse de l'autre véhicule
+		float remainingDistance = Track.trackPartLength - tractionMotor.getTachoCount();
+
+
+		if (previousSpeed < TractionMotor.currentSpeed) {
+			remainingDistance = Track.trackPartLength - tractionMotor.getTachoCount();
+			if (remainingDistance > Track.overtakingLength) {
+				Track.verifiyFreeWay = true;
+				// si on doit tourner l'ultrason à droite
+				if ((Track.trackPart == 1 && Track.trackSide == 1)
+						|| (Track.trackPart == -1 && Track.trackSide == -1)) {
+					ultrasonicMotor.goTo(UltrasonicMotor.maxDegree, false);
+				}
+				// sinon à gauche
+				else {
+					ultrasonicMotor.goTo(-UltrasonicMotor.maxDegree, false);
+				}
+
+			}
+		}
+		previousSpeed = TractionMotor.currentSpeed;
+	}
+
+	/**
+	 * Gestion de l'ultrason pour vérifier si l'autre côté de la piste est libre
+	 */
+	public void freeWay() {
+
+		if (ultrasonicMotor.previousMoveComplete()) {
+			// si la voie est libre (supérieur à la largeur de la piste - la largeur du
+			// robot - la moitié du dégradé (suivi)
+			if (ultrasonic.getDistance() > Track.crossroadsLength - TractionMotor.wheelSpacing
+					- Track.gradientWidth / 2) {
+				// si la distance restante est toujours ok
+				float remainingDistance = Track.trackPartLength - tractionMotor.getTachoCount();
+				if (remainingDistance > Track.overtakingLength) {
+					Track.overtaking = true;
+				}
+
+			}else{
+				Track.ultrasonicRepositioning = true;
+				ultrasonicMotor.goTo(-directionMotor.determineAngle(intensity), true);
+			}
+			Track.verifiyFreeWay = false;
+			previousSpeed = TractionMotor.maxSpeed;
+		}
 	}
 
 	/**
@@ -191,28 +262,36 @@ public class RobotControls {
 	public void overtaking() {
 
 		Track.hangOnTrack = false;
+		Track.overtaking = false;
 
 		// règle l'angle que les roues doivent prendre pour changer de côté
 		int angle;
 		if (Track.trackSide == -1) {
 			angle = 0;
+			Track.overtakingPart = 2;
 		} else {
+			Track.overtakingPart = 2;
 			// angle des roues en fonction du rayon
 			if (Track.trackPart == 1) {
 				// - arcsin(empatement / petit rayon)
 				angle = -(int) (Math
 						.asin(DirectionMotor.wheelBase
-								/ (Track.smallRadius + DirectionMotor.wheelBase))
+								/ (Track.smallRadius + Track.gradientWidth / 2))
 						* 180d / Math.PI);
 			} else {
 				// arcsin(empatement / petit rayon)
 				angle = (int) (Math
 						.asin(DirectionMotor.wheelBase
-								/ (Track.smallRadius + DirectionMotor.wheelBase))
+								/ (Track.smallRadius + Track.gradientWidth / 2))
 						* 180d / Math.PI);
 			}
+
+			angle = DirectionMotor.maxDegree / DirectionMotor.maxAngle * angle;
 		}
+
+		ultrasonicMotor.goTo(-angle, true);
 		directionMotor.goTo(angle);
+		previousTachoCount = tractionMotor.getTachoCount();
 		tractionMotor.setSpeed(TractionMotor.currentSpeed);
 	}
 
@@ -225,16 +304,23 @@ public class RobotControls {
 	 *                faut rejoindre l'autre côté. La valeur de part est la valeur de
 	 *                Track.overtaking
 	 */
-	public void overtakingEnd(boolean part) {
-		if (part) {
-			if (tractionMotor.getTachoCount() >= (Track.smallRadius + TractionMotor.wheelSpacing) * 2
-					* Math.PI / TractionMotor.cmInDegres) {
+	public void overtakingEnd() {
+		if (Track.overtakingPart == 1) {
+			if (tractionMotor.getTachoCount() >= previousTachoCount
+					+ (Track.smallRadius + Track.gradientWidth / 2) * 2 * Math.PI / 4
+							/ TractionMotor.cmInDegres) {
+				ultrasonicMotor.goTo(0, true);
 				directionMotor.goTo(0);
-				Track.overtaking = false;
+				Track.overtakingPart = 2;
 			}
 		} else {
-			if (intensity <= (ColorSensor.trackMaxValue - 10)) {
-				Track.hangOnTrack = true;
+			// sécurité pour ne pas détecter le côté actuel
+			if (tractionMotor.getTachoCount() >= previousTachoCount + 720) {
+				if (intensity <= (ColorSensor.trackMaxValue - 10)) {
+					Track.hangOnTrack = true;
+					// on change les données de piste
+					Track.changeTrackSide();
+				}
 			}
 		}
 	}

@@ -14,7 +14,7 @@ public class UltrasonicMotor {
 	private float[] sampleUltrasonicTouchSensor;
 
 	private final static int maxSpeed = 1000;
-	public final static int maxDegree = 2300; // de droit à un bord
+	public final static int maxDegree = 2250; // de droit à un bord
 	private final static int maxDirectionDegree = 1190;
 	private static int currentDegree;
 
@@ -60,17 +60,26 @@ public class UltrasonicMotor {
 
 		// si l'angle est lié au roue
 		if (boundWithWheels) {
+
 			// mise à l'échelle de l'angle Direction à l'angle Ultrason
 			angle = maxDirectionDegree / DirectionMotor.maxDegree * angleP;
 			// transformation de l'angle final en nombre de ° que doit faire le robot
-			
+
+			// si l'angle est supérieure au maximum à gauche
+			if (angleP < -maxDirectionDegree) {
+				angle = -maxDirectionDegree;
+				// si l'angle est supérieur au max à droite
+			} else if (angleP > maxDirectionDegree) {
+				angle = maxDirectionDegree;
+			}
+
 		}
 		// si l'ultrason bouge librement (sans les roues)
 		else {
 			// c'est un bête angle
 			angle = angleP;
 		}
-		
+
 		angle = angle - currentDegree;
 		ultrasonicMotor.rotate(angle, true);
 	}
@@ -84,6 +93,7 @@ public class UltrasonicMotor {
 
 	/**
 	 * Renvoi si le moteur est en mouvement
+	 * 
 	 * @return vrai si le moteur ne fait plus de mouvement
 	 */
 	public boolean previousMoveComplete() {

@@ -1,6 +1,7 @@
 package ch.astrepto.robot;
 
 import ch.astrepto.robot.capteurs.ColorSensor;
+import ch.astrepto.robot.moteurs.TractionMotor;
 
 public class Track {
 
@@ -9,6 +10,7 @@ public class Track {
 	public static int trackPart; // 1 côté avec priorité de droite, -1 côté prioritaire
 	public final static float smallRadius = 10;
 	public final static float largeRadius = 35;
+	public final static float gradientWidth = 8;
 
 	// VARIABLES POUR LE CARREFOUR
 	public static boolean crossroads = false; // si arrivé au carrrefour
@@ -17,10 +19,18 @@ public class Track {
 	public static boolean justAfterCrossroads = true;
 
 	// VARIABLES POUR LES DEPASSEMENTS
+	public static boolean verifiyFreeWay = false; // true si on lance la procédure de vérification
 	public static boolean overtaking = false; // si en train de dépasser
+	public static int overtakingPart = 0;
 	public static boolean hangOnTrack = true; // si en train de suivre la piste (avec le
 							// dégradé)
+	public static boolean ultrasonicRepositioning = false;
 	public final static float crossroadsLength = 30; // en cm
+	// longueur minimal d'un côté de la piste
+	public final static float trackPartLength = (float) (((smallRadius + gradientWidth) * 2 * Math.PI)/TractionMotor.cmInDegres);
+	// le bout droit + le 1/4 du petit virage de la piste + une marge de 10, en degrés
+	public final static float overtakingLength = (float) ((crossroadsLength
+			+ ((smallRadius + gradientWidth / 2) * 2 * Math.PI) / 4) + 10) / TractionMotor.cmInDegres;
 
 	/**
 	 * Change le côté de la piste

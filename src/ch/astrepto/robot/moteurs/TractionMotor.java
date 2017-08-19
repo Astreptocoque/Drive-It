@@ -10,7 +10,7 @@ public class TractionMotor {
 	private EV3LargeRegulatedMotor[] synchro;
 
 	private static boolean isMoving = false;
-	public final static float maxSpeed = 200f;
+	public final static float maxSpeed = 120f;
 	public final static float cmInDegres = 0.037699112f; // pas touche (en fct des roues)
 	public final static float wheelSpacing = 9.5f;
 	// LIMITES DE DETECTION D'UN VEHICULE

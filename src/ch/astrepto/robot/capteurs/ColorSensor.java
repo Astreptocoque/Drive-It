@@ -10,8 +10,8 @@ public class ColorSensor {
 	private SensorMode colorSensorMode;
 	private float[] sampleColorSensor;
 	
-	public static final float trackMaxValue = 68; // blanc
-	public static final float trackMinValue = 13; // bleu foncé
+	public static final float trackMaxValue = 60; // blanc
+	public static final float trackMinValue = 11; // bleu foncé
 	public static final float trackCrossingValue = 2; // ligne noire
 	
 	public ColorSensor(){
